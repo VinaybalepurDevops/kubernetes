@@ -1,8 +1,8 @@
 # kubernetes
 
-Start with basic
-Then go to cluster
-Followed by Instance distribution
-Resource allocation
-HPA
-All the notes are avaialable in the respective folders
+Start with basic <br />
+Then go to cluster <br />
+Followed by Instance distribution <br />
+Resource allocation <br />
+HPA <br />
+All the notes are avaialable in the respective folders <br />
