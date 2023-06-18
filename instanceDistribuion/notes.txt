@@ -1,0 +1,152 @@
+Instance distribution
+
+This helps us get max benifit of cost. There are 3 types of pricing model in AWS
+1. On demand - This is normal EC2 machines, which is priced at a specific cost and is avaialble always
+2. Spot - This is cheapest avaialble machine with upto 70% of discount. The disadvantage is these instances 
+can be taken away at any time based on demand
+3. Reserved - This model allows us to reserve the instance based on size for a certain cost. If the size changes
+the cost also becomes on demand
+
+Getting spot instance in Kubernetes
+To get the adv of spot instance, we can use instance distribution
+
+In the below kube yml file, we have defined following things
+1. max & min size - Max and min number of machines required. In this ex we have specified we need 10 machines
+2. maxPrice - This is the max price we are ready to pay for the isntanc.
+3. instanceTypes - Type of instance required
+4. onDemandBaseCapacity - How many min no. of instances we require as on demand. Out of 10 instances we need atleast
+2 instances as on demand
+5. onDemandPercentageAboveBaseCapacity - This is the % of machines required on demand. Total we have 10 machines specified.
+Out of this 2 are fixed as on demand. If we specifiy onDemandPercentageAboveBaseCapacity as 50%, this means, out of remaining
+8 machines, 50% should be of on demand, which makes it 4. In total 6 machines will be on demand. Remaining 4 will be spot
+
+
+
+
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: demo-c42-tbd
+  region: us-east-1
+  version: "1.27"
+
+nodeGroups:
+  - name: ng-1
+    instanceType: t2.small
+    desiredCapacity: 2
+    volumeSize: 20
+  - name: ng-2
+    minsize: 10
+    maxsize: 10
+    instancesDistribution:
+        maxPrice: 0.05
+        instanceTypes: ["t3.small", "t2.small"] # At least one instance type should be specified
+        onDemandBaseCapacity: 2
+        onDemandPercentageAboveBaseCapacity: 50
+        spotAllocationStrategy: "capacity-optimized"
+availabilityZones: ['us-east-1a', 'us-east-1b']
+
+Creation of vote application using name spaces 
+
+Name space is used to create virtual env whihc allows us to deploy using the same yml file into different environments
+such as dev, QA etc
+
+Create a name space called dev after creation of cluster. Once the cluster is created deploy the vote using following yml file.
+This will create the voteUI, ngnix and load balancer
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 3
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: nginx
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+          app: nginx
+    template:
+        metadata:
+          name: nginx
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: vote
+
+Next we need to have redis deployed. Since we have created a name space all the communication between services happen with the
+services present within the name space. So if we deploy redis in dev name space, the communication between vote and redis happens 
+using http://redis.  If the application has to communicate with a service in different name space, we use
+http://serviceName.NameSpace. Service name has to be be unique within name space. We cannot have two different redis named service
+in the same yml file    
+
+To make the vote work end to end, create a new name space called local. Redeploy the vote application and also the 
+redis application using below redis yml
+Create redis.yml with following yml file
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+          app: redis
+    template:
+        metadata:
+          name: redis
+          labels:
+            app: redis
+        spec:
+          containers:
+            - name: redis
+              image: redis:latest
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+
+
+kubectl get svc -n <namespaceName>  - To get the load balancer dns name which can be used to access the application 

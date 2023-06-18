@@ -38,6 +38,7 @@ nodeGroups:
 availabilityZones: ['us-east-1a', 'us-east-1b']
 
 ekctl is only in cluster creation and post the cluster creation, this service is done
+
 Run this file using to start the cluster - eksctl create cluster -f cluster.yml
 Deleting the cluster - eksctl delete cluster -f cluster.yml
 

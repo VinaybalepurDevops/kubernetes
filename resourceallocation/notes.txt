@@ -1,0 +1,108 @@
+Create a name space called local
+
+Specifying resource allocation
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 20
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+
+
+The above specification creates 20 replicas on the ec2 instance, where there not be so much of resources avaialble. To avoid this
+we spcecify the resources block.
+
+Since each ec2 instance has a specified amount of storage and memory, we should ensure only reqiured number of pods are deployed
+in the server. To achieve this we can use resources block.
+
+resources:
+    requests:
+        cpu: "1"
+        memory: "1Gi"
+    limits:
+        cpu: "2"
+        memory: "2Gi"
+
+requests block - ensures this amount of memory and cpu is blocked for the pod no matter what. 
+limits block - is to limit the final allocation to only this much and not go beyond
+
+Even though we have specified 20 replicas, it will create only 2 running replicas and keep the rest in pending state.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 20
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+              resources:
+                requests:
+                    cpu: "1"
+                    memory: "1Gi"
+                limits:
+                    cpu: "2"
+                    memory: "2Gi"
+
+
+Create a yaml called resource.yml and have the following specification
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 20
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+              resources:
+                requests:
+                    cpu: "1"
+                    memory: "1Gi"
+                limits:
+                    cpu: "2"
+                    memory: "2Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: vote

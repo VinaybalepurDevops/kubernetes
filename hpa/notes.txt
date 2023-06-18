@@ -1,0 +1,75 @@
+Autoscaling
+By default kubernets does not provide autosclaing. We need to install Kubernetes Metrics Server using 
+https://docs.aws.amazon.com/eks/latest/userguide/metrics-server.html
+
+There are two levels of autoscaling - Pod and node
+
+Horizontal Pod Autoscaling
+In Kubernetes, a HorizontalPodAutoscaler automatically updates a workload resource (such as a Deployment or StatefulSet), 
+with the aim of automatically scaling the workload to match demand.
+Horizontal scaling means that the response to increased load is to deploy more Pods. 
+This is different from vertical scaling, which for Kubernetes would mean assigning more resources 
+(for example: memory or CPU) to the Pods that are already running for the workload.
+
+**** Create a name space local *******
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+              resources:
+                requests:
+                    cpu: "1"
+                    memory: "1Gi"
+                limits:
+                    cpu: "2"
+                    memory: "2Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: vote
+
+Create hpa.yml file with following config
+
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+    name: hpa-deployment
+spec:
+    scaleTargetRef:
+        apiVersion: apps/v1
+        kind: Deployment
+        name: vote
+    minReplicas: 1
+    maxReplicas: 10 
+    targetCPUUtilizationPercentage: 2
+
+
+Run the hpa file using the command - kubectl apply -f hpa.yml -n local 
+Check if the hpa is applied using - kubectl get hpa -n local
+Run load on the dns url and check if the CPU utilization has increased beyond 2% using - kubectl get pods -n local
+If the CPU increases beyond 2% then we will see increase in the pods. But since we have also defined resources on 
+vote we will see only pods increasing to only 3.
