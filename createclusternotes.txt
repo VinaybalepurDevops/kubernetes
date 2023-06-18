@@ -1,0 +1,123 @@
+Creating kubernetes cluster - https://eksctl.io/
+
+eksctl create cluster - Will create a cluster with predefined configuratons. This will not be very helpful for us as we have
+to define our configurations of ec2 instances, security groups etc. 
+
+To create a kubernetes cluster on AWS we need to have one machine as master
+* We need to have EC2 machine with atleast T2 medium
+* We need to have adminstrator access role attached to the machine as we have to use this machine to crete networking, roles etc
+
+
+Installing Kube master
+1. Create Administrator role and attach to machine. Then do the following steps
+
+1. sudo apt-get update
+2. sudo apt install python3-pip (Install Python3-Pip)
+3. pip3 install awscli --upgrade --user (use Sudo if not run in the first place)
+4. sudo rm /usr/local/bin/kubectl (removing the Kubectl)
+5. https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/ (link to download Kubectl consists of 3 steps)
+6. sudo apt install awscli (Before running aws eks update command check awscli version.
+If aws cLi is not present install it with the mentioned command)
+7. https://github.com/weaveworks/eksctl/blob/main/README.md#installation - Follow the 
+
+Create a file cluster.yml
+
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: demo-c42-tbd
+  region: us-east-1
+  version: "1.27"
+
+nodeGroups:
+  - name: ng-1
+    instanceType: t2.small
+    desiredCapacity: 2
+    volumeSize: 20
+availabilityZones: ['us-east-1a', 'us-east-1b']
+
+ekctl is only in cluster creation and post the cluster creation, this service is done
+Run this file using to start the cluster - eksctl create cluster -f cluster.yml
+Deleting the cluster - eksctl delete cluster -f cluster.yml
+
+Once the cluster is created use kubectl get nodes - This returns 2 nodes as the desired capacity in the cluster.yml is 
+specified as 2
+
+Service
+This is an abstraction layer in front of the pods, which load balances the requests received to the pods
+
+There are two types of traffic 
+External - Traffic recieved from the outside world
+Internal - Traffic recieved from one service to another
+
+ClusterIP - This is for internal communication
+Load balancer - This is for outside communication
+
+Deploying vote in the created cluster
+
+Create vote.yml with following details
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 3
+    selector:
+        matchLabels:
+          app: vote
+    template:
+        metadata:
+          name: vote
+          labels:
+            app: vote
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote   
+
+
+Run this using - kubectl apply -f vote.yml
+kubectl get pods -o wide - this returns 3 pods, as we have mentioned the replicas as 3
+
+Creation of ngix using votengnix.yml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: nginx
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+          app: nginx
+    template:
+        metadata:
+          name: nginx
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx
+
+Creation of ui service to load the UI requests to vote application
+
+Create a voteuiservice.yml using following
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: vote
+
+Since we have to laod balance the vote application and since we have used vote as the container name we use vote as
+the selector in the app
+
+kubectl describe service vote - This gives the details of the service including the endpoints

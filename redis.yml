@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            batch: redis-c42
+    template:
+        metadata:
+          name: redis
+          labels:
+            batch: redis-c42
+        spec:
+          containers:
+            - name: redis
+              image: redis:alpine

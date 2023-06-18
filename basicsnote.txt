@@ -1,0 +1,165 @@
+Kubernetes
+
+It is an Orchestrationtool used for Lifecycle management from starting to killing the docker instances. It solves the problmes of
+Availability - having service running 24/7 without downtime
+Scalability - Automatic deployment to predefined EC2 machines whithout affecting existing set up
+
+Different Orchestration tools - swarm, ECS, Kubernetes
+Kubernetes founded in 2014 by Google
+Works on master node architecture
+
+Master - 
+    Kube api server - Captain of the ship used to manage the nodes
+    ETCD - distributed key value pair database
+    Kube controller manager - It will maintain the desired state as equal to current state
+    cloud manager - Service used to manage the underlying cloud service provider
+
+Worker - 
+    Kubelet - Responsible to communicating with the Kube API server and scheduling the pod over to worker node
+    Kube proxy - Responsible to exposing the pod to the outside world
+
+Kubectl - Used to interacting with k8s cluster
+
+Smallest unit - Pods. Disdvantage of using pod is scalability
+
+Imeperative commands - These are command line commands used to perfrom simple actions in kubernetes
+EX - kubectl run nginx --image nginx
+
+
+
+Installing mini kube on ec2 instance. Use medium size instance
+https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
+https://minikube.sigs.k8s.io/docs/start/
+
+minikube start
+kubectl get nodes
+
+Start nginx pod
+kubectl run nginx --image <imageName>
+
+Get the pod details
+kubectl get pods
+
+Get into the pod
+kubectl exec -it <podname>  bash
+
+Follow logs
+kubectl logs -f <podname>
+
+Destroy pods
+kubectl delete pod <podname>
+
+
+Yml file for kube
+
+Pod based yml
+apiVersion: v1
+kind: Pod
+metadata:
+    name: nginx
+spec:
+    containers:
+    - name: nginx
+      image: nginx
+
+Pods disadvanage is scalability. We cannot automatically scale the number of pods. To overcome this use replicaset
+
+yml file
+apiVersion: v1
+kind: Pod
+metadata:
+    name: nginx
+spec:
+    containers:
+    - name: nginx
+      image: nginx
+
+kubectl apply -f <ymlfile>
+kubectl delete -f <ymlfile>
+
+
+Replica set
+For scaling use replica set. By default pod does not come with high scalability
+Replica set contains the pod -> which contains the docker container
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+    name: nginx
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            batch: c42
+    template:
+        metadata:
+          name: nginx
+          labels:
+            batch: c42
+        spec:
+          containers:
+            - name: nginx
+              image: nginx
+
+Replica set does not offer deployment features, meaning we cannot deploy the code using replica set. Go for Deploymnet kind for 
+achieving this.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: nginx
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            batch: c42
+    template:
+        metadata:
+          name: nginx
+          labels:
+            batch: c42
+        spec:
+          containers:
+            - name: nginx
+              image: nginx
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: vote
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            batch: vote-c42
+    template:
+        metadata:
+          name: vote
+          labels:
+            batch: vote-c42
+        spec:
+          containers:
+            - name: vote
+              image: dipesh017/demo:vote
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            batch: redis-c42
+    template:
+        metadata:
+          name: redis
+          labels:
+            batch: redis-c42
+        spec:
+          containers:
+            - name: redis
+              image: redis:alpine
+
