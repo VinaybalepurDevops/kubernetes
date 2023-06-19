@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 5
+    selector:
+        matchLabels:
+          app: redis
+    template:
+        metadata:
+          name: redis
+          labels:
+            app: redis
+        spec:
+          containers:
+            - name: redis
+              image: redis:latest
+          tolerations:
+            - key: type
+              value: ngnix
+              operator: Equal
+              effect: NoSchedule
+          affinity:
+            nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: type
+                          operator: In
+                          values:
+                          - ngnix
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+  selector:
+    app: redis

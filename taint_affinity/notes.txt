@@ -1,0 +1,121 @@
+Taints and toleration 
+
+Node affinity is a property of Pods that attracts them to a set of nodes (either as a preference or a hard requirement). 
+Taints are the opposite -- they allow a node to repel a set of pods.
+
+Tolerations are applied to pods. Tolerations allow the scheduler to schedule pods with matching taints. Tolerations allow 
+scheduling but don't guarantee scheduling: the scheduler also evaluates other parameters as part of its function.
+
+Taints and tolerations work together to ensure that pods are not scheduled onto inappropriate nodes. One or more taints 
+are applied to a node; this marks that the node should not accept any pods that do not tolerate the taints
+
+Taint is for the machine and Toleration is for the pod.
+
+To taint a node use the following commands
+    1. Get the list of nodes using - kubectl get nodes -o wide
+    2. Select the name of the node which has to be tainted and run the following command
+        kubectl taint node <Name> type=<anyKey>:NoSchedule
+        This means that no pod will be able to schedule onto node <Name> unless it has a matching toleration.
+
+
+redis.yml file composition
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+          app: redis
+    template:
+        metadata:
+          name: redis
+          labels:
+            app: redis
+        spec:
+          containers:
+            - name: redis
+              image: redis:latest
+          tolerations:
+            - key: type
+              value: ngnix
+              operator: Equal
+              effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+
+We have tolerations block which has following
+    1. key = type
+    2. value = ngnix - This is what is the key we had specified
+    3. operator = equal - This is the operator we have used in the tainting command
+    4. effect = NoSchedule - This is the effect we have used in the tainting command
+
+This ensures atleast one redis pod is deployed in tainted machine. But this does not solve the problem of having all the redis
+pod on the same machine
+
+
+Creating affinity between pods and machines
+To ensure a particular type of service/pod gets deployed on a particular machine, we use affinity. This is opposite of tainting.
+
+Steps to achieve this - 
+1. Create a taint_affinity_nginx.yml file with following contents
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: redis
+spec:
+    replicas: 5
+    selector:
+        matchLabels:
+          app: redis
+    template:
+        metadata:
+          name: redis
+          labels:
+            app: redis
+        spec:
+          containers:
+            - name: redis
+              image: redis:latest
+          tolerations:
+            - key: type
+              value: ngnix
+              operator: Equal
+              effect: NoSchedule
+          affinity:
+            nodeAffinity:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: type
+                          operator: In
+                          values:
+                          - ngnix
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+  selector:
+    app: redis
+
+2. Create a label on the node in which we need to bring the affinity
+        kubectl label node <Name> type=<key>
+        kubectl label node ip-192-168-15-235.ec2.internal type=ngnix
+3. Apply the yml file on the redis service and all the replicas will be deployed in this machine and not on any other machine.
+

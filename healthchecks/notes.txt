@@ -1,0 +1,66 @@
+Health checks
+We have to have health check to ensure application is up and running before we are making any request to the applciation. 
+There are two types of health checks
+    1. Readiness probe - This will check if the service ready to accept any connections. There are multiple configs
+        path - Health check path
+        port - Port on which application is running
+        initialDelaySeconds - Amount of time to wait before starting the health check
+        periodSeconds - Interval at which health check has to be performed.
+    If this probe fails, then the pod does not come up and READY status for kubectl get pods will be 0/1 instead of 1/1
+
+    2. livenessProbe - This will help in restarting the pod if there are any anomolies in the pod.
+        path - Health check path
+        port - Port on which application is running
+        initialDelaySeconds - Amount of time to wait before starting the health check
+        periodSeconds - Interval at which health check has to be performed.
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: vote
+  template:
+    metadata:
+      name: vote
+      labels:
+        app: vote
+    spec:
+      containers:
+      - name: vote
+        image: dipesh017/demo:vote
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 5 
+        resources:
+          requests:
+            cpu: ".2"
+            memory: "256Mi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+  selector:
+    app: vote
